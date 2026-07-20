@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 
 const NOTIFICATIONS = [
   { id: "n1", icon: "💬", title: "새 채팅 메시지", desc: "이서연님이 메시지를 보냈어요", time: "방금", unread: true },
-  { id: "n2", icon: "🎉", title: "포인트 적립", desc: "습득물 신고로 100P가 적립되었어요", time: "1시간 전", unread: true },
+  { id: "n2", icon: "🎉", title: "보상 포인트 지급", desc: "분실자가 수령을 확인해 300P가 적립되었어요", time: "1시간 전", unread: true },
   { id: "n3", icon: "🔍", title: "분실물 매칭", desc: "등록하신 분실물과 유사한 습득물이 발견되었어요", time: "3시간 전", unread: true },
   { id: "n4", icon: "✅", title: "분실물 완료", desc: "갈색 반지갑이 주인을 찾았어요!", time: "1일 전", unread: false },
   { id: "n5", icon: "📅", title: "출석 체크", desc: "오늘 출석 체크로 50P가 적립되었어요", time: "1일 전", unread: false },
@@ -13,12 +13,12 @@ const NOTIFICATIONS = [
 ];
 
 export default function NotificationsScreen() {
-  const { setScreen } = useApp();
+  const { goBack } = useApp();
 
   return (
     <div className="uf-screen flex flex-col h-full">
       <div className="uf-header px-4 pt-14 pb-4 flex items-center gap-3 sticky top-0 z-40">
-        <button onClick={() => setScreen("home")} className="p-1 -ml-1">
+        <button onClick={goBack} className="p-1 -ml-1" aria-label="이전 화면으로 돌아가기">
           <ArrowLeft size={22} style={{ color: "var(--foreground)" }} />
         </button>
         <h1 className="text-lg font-extrabold text-foreground">알림</h1>

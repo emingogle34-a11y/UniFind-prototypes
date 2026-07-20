@@ -1,4 +1,4 @@
-import { eq, desc, and, or } from "drizzle-orm";
+import { eq, desc, and, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, lostItems, InsertLostItem, chatRooms, InsertChatRoom, chatMessages, InsertChatMessage } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -118,7 +118,22 @@ export async function createLostItem(item: InsertLostItem) {
   return result;
 }
 
-export async function getLostItems(filters?: { building?: string; type?: "lost" | "found"; status?: string }) {
+export async function createLostItemWithReward(item: InsertLostItem, rewardPoints: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.transaction(async (tx) => {
+    const result = await tx.insert(lostItems).values(item);
+    await tx
+      .update(users)
+      .set({ points: sql`${users.points} + ${rewardPoints}` })
+      .where(eq(users.id, item.userId));
+
+    return { result, rewardPoints };
+  });
+}
+
+export async function getLostItems(filters?: { building?: string; type?: "lost" | "found"; status?: string; userId?: number }) {
   const db = await getDb();
   if (!db) return [];
   
@@ -126,6 +141,7 @@ export async function getLostItems(filters?: { building?: string; type?: "lost" 
   if (filters?.building) conditions.push(eq(lostItems.building, filters.building));
   if (filters?.type) conditions.push(eq(lostItems.type, filters.type as any));
   if (filters?.status) conditions.push(eq(lostItems.status, filters.status as any));
+  if (filters?.userId) conditions.push(eq(lostItems.userId, filters.userId));
   
   const query = conditions.length > 0 
     ? db.select().from(lostItems).where(and(...conditions)).orderBy(desc(lostItems.createdAt))

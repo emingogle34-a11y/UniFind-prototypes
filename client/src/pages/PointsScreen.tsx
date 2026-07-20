@@ -1,6 +1,6 @@
 import { useApp } from "@/contexts/AppContext";
 import { MOCK_POINT_HISTORY } from "@/lib/data";
-import { ArrowLeft, TrendingUp, Gift, ChevronRight, Sparkles } from "lucide-react";
+import { ArrowLeft, BadgeCheck, CheckCircle2, ChevronRight, FileCheck2, Gift, Handshake, LockKeyhole, PackageCheck, Sparkles, TrendingUp, type LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { riseItem, staggerContainer, tapMotion, motionTransition, useCountUp } from "@/lib/motion";
 import { toast } from "sonner";
@@ -13,11 +13,17 @@ const REWARDS = [
 ];
 
 const POINT_METHODS = [
-  { icon: "📝", label: "분실물 등록", points: "+100P", color: "var(--uf-blue-light)", textColor: "var(--uf-blue)" },
-  { icon: "📦", label: "습득물 신고", points: "+100P", color: "var(--uf-blue-light)", textColor: "var(--uf-blue)" },
-  { icon: "🤝", label: "분실물 찾아주기", points: "+500P", color: "var(--uf-danger-soft)", textColor: "var(--uf-orange)" },
-  { icon: "✅", label: "매일 출석 체크", points: "+50P", color: "var(--uf-success-soft)", textColor: "var(--uf-green)" },
-  { icon: "🎓", label: "첫 학교 인증 보너스", points: "+100P", color: "var(--uf-purple-soft)", textColor: "var(--uf-purple)" },
+  { icon: FileCheck2, label: "분실물 등록", points: "+100P", color: "var(--uf-blue-light)", textColor: "var(--uf-blue)" },
+  { icon: PackageCheck, label: "습득물 등록", points: "+200P", color: "var(--uf-success-soft)", textColor: "var(--uf-green)" },
+  { icon: Handshake, label: "물건 전달 완료", points: "설정된 보상P", color: "var(--uf-danger-soft)", textColor: "var(--uf-orange)" },
+  { icon: CheckCircle2, label: "매일 출석 체크", points: "+50P", color: "var(--uf-success-soft)", textColor: "var(--uf-green)" },
+  { icon: BadgeCheck, label: "첫 학교 인증 보너스", points: "+100P", color: "var(--uf-purple-soft)", textColor: "var(--uf-purple)" },
+];
+
+const FINDER_REWARD_FLOW: { icon: LucideIcon; title: string; desc: string; color: string; background: string }[] = [
+  { icon: LockKeyhole, title: "보상 포인트 예약", desc: "분실자가 등록할 때 포인트를 안전하게 보관해요", color: "var(--uf-blue)", background: "var(--uf-blue-light)" },
+  { icon: Handshake, title: "물건 전달", desc: "익명 채팅에서 장소와 시간을 정해 전달해요", color: "var(--uf-purple)", background: "var(--uf-purple-soft)" },
+  { icon: CheckCircle2, title: "수령 확인", desc: "분실자가 '물건을 받았어요'를 누르면 지급돼요", color: "var(--uf-green)", background: "var(--uf-success-soft)" },
 ];
 
 const PARTNER_BENEFITS = [
@@ -27,7 +33,7 @@ const PARTNER_BENEFITS = [
 ];
 
 export default function PointsScreen() {
-  const { setScreen, userPoints } = useApp();
+  const { goBack, userPoints } = useApp();
   const displayPoints = useCountUp(userPoints, 720);
 
   const totalEarned = MOCK_POINT_HISTORY.filter((h) => h.type === "earn").reduce((s, h) => s + h.amount, 0);
@@ -48,7 +54,7 @@ export default function PointsScreen() {
     <div className="uf-screen flex h-full flex-col">
       <div className="uf-header sticky top-0 z-40 px-4 pb-4 pt-14">
         <div className="flex items-center gap-3">
-          <motion.button {...tapMotion} onClick={() => setScreen("mypage")} className="-ml-1 rounded-full p-2">
+          <motion.button {...tapMotion} onClick={goBack} className="-ml-1 rounded-full p-2" aria-label="이전 화면으로 돌아가기">
             <ArrowLeft size={22} style={{ color: "var(--foreground)" }} />
           </motion.button>
           <div>
@@ -65,8 +71,8 @@ export default function PointsScreen() {
           style={{ background: "var(--uf-premium-gradient)", boxShadow: "var(--uf-shadow-floating)" }}
         >
           <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-white/10" />
-          <div className="absolute bottom-4 right-5 flex h-20 w-20 items-center justify-center rounded-[28px] bg-white/14">
-            <Sparkles size={34} className="text-white" />
+          <div className="pointer-events-none absolute right-5 top-5 flex h-14 w-14 items-center justify-center rounded-[20px] border border-white/15 bg-white/12">
+            <Sparkles size={25} className="text-white" />
           </div>
           <div className="relative z-10 p-5">
             <div className="flex items-start justify-between gap-4">
@@ -96,6 +102,36 @@ export default function PointsScreen() {
                 <span className="text-xs text-white/70">이번 달 +350P</span>
               </div>
             </div>
+          </div>
+        </motion.div>
+
+        <motion.div variants={riseItem} className="uf-card overflow-hidden p-4">
+          <div className="mb-4 flex items-start gap-3">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl" style={{ background: "var(--uf-warning-soft)", color: "var(--uf-amber)" }}>
+              <Handshake size={19} />
+            </div>
+            <div>
+              <h3 className="text-sm font-extrabold text-foreground">습득자 보상은 이렇게 지급돼요</h3>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">물건을 실제로 돌려준 뒤에만 포인트가 이동해요.</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {FINDER_REWARD_FLOW.map(({ icon: Icon, title, desc, color, background }, index) => (
+              <div key={title} className="relative flex items-start gap-3">
+                {index < FINDER_REWARD_FLOW.length - 1 && <span className="absolute left-[17px] top-9 h-6 w-px bg-border" />}
+                <span className="relative z-10 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl" style={{ background, color }}>
+                  <Icon size={16} />
+                </span>
+                <div className="min-w-0 pt-0.5">
+                  <p className="text-xs font-extrabold text-foreground">{index + 1}. {title}</p>
+                  <p className="mt-0.5 text-[11px] font-medium leading-relaxed text-muted-foreground">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 flex items-center gap-2 rounded-2xl px-3 py-2.5" style={{ background: "var(--uf-success-soft)", color: "var(--uf-green)" }}>
+            <BadgeCheck size={16} />
+            <span className="text-[11px] font-extrabold">수령 확인 즉시 습득자 계정으로 자동 지급</span>
           </div>
         </motion.div>
 
@@ -166,18 +202,22 @@ export default function PointsScreen() {
         <motion.div variants={riseItem} className="uf-card p-4">
           <h3 className="mb-3 text-sm font-extrabold text-foreground">포인트 적립 방법</h3>
           <div className="space-y-2.5">
-            {POINT_METHODS.map((item) => (
+            {POINT_METHODS.map((item) => {
+              const Icon = item.icon;
+              return (
               <div key={item.label} className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl text-base" style={{ background: item.color }}>
-                  {item.icon}
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl" style={{ background: item.color, color: item.textColor }}>
+                  <Icon size={15} />
                 </div>
                 <span className="flex-1 text-sm font-medium text-muted-foreground">{item.label}</span>
                 <span className="text-sm font-extrabold" style={{ color: item.textColor }}>
                   {item.points}
                 </span>
               </div>
-            ))}
+              );
+            })}
           </div>
+          <p className="mt-3 text-[10px] font-medium leading-relaxed text-muted-foreground">중복·허위 신고는 적립에서 제외되고, 반복 시 활동이 제한돼요.</p>
         </motion.div>
 
         <motion.div variants={riseItem}>

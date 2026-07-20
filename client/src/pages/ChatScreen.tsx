@@ -59,26 +59,31 @@ function isMyMessage(message: any) {
 }
 
 export function ChatListScreen() {
-  const { setScreen, setSelectedChatId } = useApp();
+  const { setScreen, goBack, setSelectedChatId } = useApp();
   const { data: apiChatRooms, isLoading } = trpc.chat.rooms.useQuery(undefined, {
     enabled: USE_API,
     retry: false,
   });
-  const chatRooms = (apiChatRooms?.length ? apiChatRooms : MOCK_CHAT_ROOMS) as any[];
+  const chatRooms = (USE_API ? apiChatRooms ?? [] : MOCK_CHAT_ROOMS) as any[];
   const showLoading = isLoading && chatRooms.length === 0;
   const unreadTotal = chatRooms.reduce((sum, room) => sum + getRoomUnread(room), 0);
 
   return (
     <div className="uf-screen flex h-full flex-col transition-colors duration-300">
       <div className="uf-header sticky top-0 z-40 px-5 pb-4 pt-14 transition-colors duration-300">
-        <div className="flex items-end justify-between gap-4">
-          <div>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-2">
+            <motion.button {...tapMotion} onClick={goBack} className="-ml-2 rounded-full p-2" aria-label="이전 화면으로 돌아가기">
+              <ArrowLeft size={21} style={{ color: "var(--foreground)" }} />
+            </motion.button>
+            <div>
             <h1 className="text-xl font-extrabold" style={{ color: "var(--foreground)" }}>
               채팅
             </h1>
             <p className="mt-0.5 text-xs" style={{ color: "var(--muted-foreground)" }}>
               번호를 공개하지 않고 분실자와 습득자가 대화해요
             </p>
+            </div>
           </div>
           {unreadTotal > 0 && (
             <span className="rounded-full px-2.5 py-1 text-xs font-extrabold text-white" style={{ background: "var(--uf-orange)" }}>
@@ -195,7 +200,7 @@ export function ChatListScreen() {
 }
 
 export function ChatRoomScreen() {
-  const { setScreen, setActiveTab, selectedChatId } = useApp();
+  const { goBack, selectedChatId } = useApp();
   const [input, setInput] = useState("");
   const [localMessages, setLocalMessages] = useState(MOCK_MESSAGES);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -207,7 +212,7 @@ export function ChatRoomScreen() {
     enabled: USE_API && canUseApi,
     retry: false,
   });
-  const messages = (apiMessages?.length ? apiMessages : localMessages) as any[];
+  const messages = (USE_API ? apiMessages ?? [] : localMessages) as any[];
   const showMessagesLoading = messagesLoading && messages.length === 0;
 
   const sendMutation = trpc.chat.sendMessage.useMutation({
@@ -261,10 +266,8 @@ export function ChatRoomScreen() {
       <div className="uf-header sticky top-0 z-40 flex items-center gap-3 px-4 pb-3 pt-14 transition-colors duration-300">
         <motion.button
           {...tapMotion}
-          onClick={() => {
-            setActiveTab("chat");
-            setScreen("chat-list");
-          }}
+          onClick={goBack}
+          aria-label="이전 화면으로 돌아가기"
           className="-ml-1 rounded-full p-2"
         >
           <ArrowLeft size={22} style={{ color: "var(--foreground)" }} />

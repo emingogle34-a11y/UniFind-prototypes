@@ -33,6 +33,10 @@ import { LoadingSpinner, SchoolEmblem } from "@/components/TossComponents";
 import { Modal } from "@/components/TossPopups";
 import { UNIVERSITIES, UNIFIND_LOGO } from "@/lib/data";
 import { motionEase, motionTransition } from "@/lib/motion";
+import { getLoginUrl } from "@/const";
+
+const USE_API = import.meta.env.VITE_USE_API === "true";
+const CAN_USE_OAUTH = Boolean(import.meta.env.VITE_OAUTH_PORTAL_URL && import.meta.env.VITE_APP_ID);
 
 type AuthStep = "landing" | "login" | "signup" | "verify-school" | "verify-email" | "complete";
 type FieldName = "email" | "password" | "name";
@@ -1031,7 +1035,7 @@ function UniversitySheet({
 }
 
 export default function AuthScreenToss() {
-  const { setIsAuthenticated, setScreen, setUserName, setUserUniversity, isDarkMode } = useApp();
+  const { setIsAuthenticated, setUserName, setUserUniversity, replaceScreen, isDarkMode } = useApp();
   const [step, setStep] = useState<AuthStep>("landing");
   const [direction, setDirection] = useState(1);
   const [email, setEmail] = useState("");
@@ -1082,18 +1086,30 @@ export default function AuthScreenToss() {
   };
 
   const handleLogin = () => {
-    if (!validateFields("login")) return;
+    if (!USE_API) {
+      setErrors({});
+      setIsLoading(true);
+
+      window.setTimeout(() => {
+        const previewName = name.trim() || email.trim().split("@")[0] || "캠퍼스탐정";
+        setIsLoading(false);
+        setUserName(previewName);
+        setUserUniversity(selectedUniv);
+        setIsAuthenticated(true);
+        replaceScreen("home");
+        toast.success("미리보기 계정으로 로그인했어요.");
+      }, 450);
+      return;
+    }
+
+    if (!CAN_USE_OAUTH) {
+      toast.error("실제 로그인 서버 설정이 필요해요.");
+      return;
+    }
+
     setIsLoading(true);
     startLoadingGuard();
-
-    setTimeout(() => {
-      clearLoadingGuard();
-      setIsLoading(false);
-      setIsAuthenticated(true);
-      setUserName(name.trim() || "김민준");
-      setUserUniversity(selectedUniv);
-      setScreen("home");
-    }, 900);
+    window.location.href = getLoginUrl();
   };
 
   const handleSignup = () => {
@@ -1102,34 +1118,20 @@ export default function AuthScreenToss() {
   };
 
   const handleVerifySchool = () => {
-    setIsLoading(true);
-    startLoadingGuard();
-
-    setTimeout(() => {
-      clearLoadingGuard();
-      setIsLoading(false);
-      toast.success(`${selectedUniv} 이메일로 인증번호를 보냈어요.`);
-      navigateStep("verify-email", 1);
-    }, 650);
+    toast.error("학교 이메일 인증 서버가 연결되지 않았어요. 실제 발송 API 연결 후 사용할 수 있어요.");
   };
 
   const handleVerifyEmail = () => {
     if (verificationCode.length !== 6) return;
-    setIsLoading(true);
-    startLoadingGuard();
-
-    setTimeout(() => {
-      clearLoadingGuard();
-      setIsLoading(false);
-      navigateStep("complete", 1);
-    }, 720);
+    toast.error("서버에서 발급한 인증번호만 확인할 수 있어요.");
   };
 
   const handleComplete = () => {
-    setIsAuthenticated(true);
-    setUserName(name.trim() || "새 학생");
-    setUserUniversity(selectedUniv);
-    setScreen("home");
+    if (!CAN_USE_OAUTH || !USE_API) {
+      toast.error("실제 로그인 서버 설정이 필요해요.");
+      return;
+    }
+    window.location.href = getLoginUrl();
   };
 
   const goBack = () => {
@@ -1157,7 +1159,10 @@ export default function AuthScreenToss() {
               <LandingScreen
                 onLogin={() => navigateStep("login", 1)}
                 onSignup={() => navigateStep("signup", 1)}
-                onPreview={() => setScreen("home")}
+                onPreview={() => {
+                  setIsAuthenticated(false);
+                  replaceScreen("home");
+                }}
               />
             )}
             {step === "login" && (

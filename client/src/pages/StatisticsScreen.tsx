@@ -61,7 +61,7 @@ const weekdayData = [
 const COLORS = ["#3B82F6", "#8B5CF6", "#EC4899", "#F59E0B", "#10B981", "#6B7280"];
 
 export default function StatisticsScreen() {
-  const { setScreen, isDarkMode } = useApp();
+  const { goBack, isDarkMode } = useApp();
 
   const textColor = isDarkMode ? "var(--foreground)" : "var(--foreground)";
   const gridColor = isDarkMode ? "var(--border)" : "var(--border)";
@@ -73,7 +73,8 @@ export default function StatisticsScreen() {
       <div className="sticky top-0 z-10 border-b border-border bg-background transition-colors duration-300">
         <div className="flex items-center justify-between p-4 max-w-2xl mx-auto">
           <button
-            onClick={() => setScreen("home")}
+            onClick={goBack}
+            aria-label="이전 화면으로 돌아가기"
             className="rounded-lg p-2 transition-colors hover:bg-muted"
           >
             <ArrowLeft size={24} />

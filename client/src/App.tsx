@@ -2,6 +2,7 @@
 // Design: Neo-Minimal Korean Fintech, Pretendard font
 // Layout: Single scroll container in App.tsx, tabbar as absolute positioned element
 import { useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -29,15 +30,22 @@ import NotificationsSettingScreen from "./pages/NotificationsSettingScreen";
 
 // Screens that show bottom tab bar
 const TAB_SCREENS = ["home", "search", "chat-list", "points", "mypage", "center", "trust"];
+const AUTH_REQUIRED_SCREENS = ["register", "chat-list", "chat-room"];
 
 function AppContent() {
-  const { screen } = useApp();
+  const { screen, isGuest, replaceScreen } = useApp();
   const showTabBar = TAB_SCREENS.includes(screen);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     scrollContainerRef.current?.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [screen]);
+
+  useEffect(() => {
+    if (!isGuest || !AUTH_REQUIRED_SCREENS.includes(screen)) return;
+    toast.info("로그인과 학교 인증 후 이용할 수 있는 기능이에요");
+    replaceScreen("auth");
+  }, [isGuest, replaceScreen, screen]);
 
   const renderScreen = () => {
     switch (screen) {

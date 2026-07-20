@@ -21,7 +21,7 @@ interface UserTrust {
 }
 
 export default function TrustScoreScreen() {
-  const { setScreen, userName, userUniversity } = useApp();
+  const { goBack, userName, userUniversity } = useApp();
 
   const userTrust: UserTrust = {
     name: userName,
@@ -81,7 +81,7 @@ export default function TrustScoreScreen() {
     <div className="uf-screen flex h-full flex-col">
       <div className="uf-header sticky top-0 z-40 px-4 pb-4 pt-14">
         <div className="flex items-center gap-3">
-          <button onClick={() => setScreen("mypage")} className="p-1 -ml-1">
+          <button onClick={goBack} className="p-1 -ml-1" aria-label="이전 화면으로 돌아가기">
             <ArrowLeft size={22} style={{ color: "var(--foreground)" }} />
           </button>
           <div>

@@ -2,22 +2,23 @@ import { useState } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { ArrowLeft, Sparkles, Camera, CheckCircle2, ChevronRight, FileText, MapPin, Bell } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CATEGORY_ICONS, ItemCategory } from "@/lib/data";
+import { ItemCategory } from "@/lib/data";
 import { motionTransition, riseItem, staggerContainer, tapMotion } from "@/lib/motion";
 import { toast } from "sonner";
+import { CategoryIcon } from "@/components/TossComponents";
 
 type ScanState = "idle" | "scanning" | "done";
 
-const AI_CATEGORY = "전자기기" as ItemCategory;
+const AI_CATEGORY = "휴대폰/태블릿" as ItemCategory;
 
 const pipelineSteps = [
   { icon: Camera, label: "사진 인식", desc: "물체 윤곽과 색상 추출" },
-  { icon: Sparkles, label: "카테고리 예측", desc: "전자기기 가능성 분석" },
+  { icon: Sparkles, label: "카테고리 예측", desc: "휴대폰/태블릿 가능성 분석" },
   { icon: FileText, label: "등록값 추천", desc: "제목, 장소, 알림 후보 생성" },
 ];
 
 export default function AiScanScreen() {
-  const { setScreen } = useApp();
+  const { setScreen, goBack } = useApp();
   const [scanState, setScanState] = useState<ScanState>("idle");
   const [result, setResult] = useState<{ category: ItemCategory; confidence: number } | null>(null);
 
@@ -61,7 +62,7 @@ export default function AiScanScreen() {
       />
 
       <div className="relative z-10 flex items-center gap-3 px-4 pb-4 pt-14">
-        <motion.button {...tapMotion} onClick={() => setScreen("home")} className="-ml-1 rounded-full p-2">
+        <motion.button {...tapMotion} onClick={goBack} className="-ml-1 rounded-full p-2" aria-label="이전 화면으로 돌아가기">
           <ArrowLeft size={22} color="white" />
         </motion.button>
         <div>
@@ -136,9 +137,9 @@ export default function AiScanScreen() {
                   initial={{ scale: 0.7, rotate: -8 }}
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                  className="mb-3 text-6xl"
+                  className="mb-3 text-white"
                 >
-                  {CATEGORY_ICONS[result.category] ?? "📱"}
+                  <CategoryIcon category={result.category} size={52} strokeWidth={1.65} />
                 </motion.div>
                 <div className="text-center">
                   <div className="mb-1 flex items-center justify-center gap-1.5">

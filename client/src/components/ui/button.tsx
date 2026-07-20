@@ -11,7 +11,7 @@ const buttonVariants = cva(
       variant: {
         default: "bg-primary text-primary-foreground shadow-[var(--uf-shadow-floating)] hover:brightness-[0.98]",
         premium:
-          "border border-white/20 bg-[var(--uf-premium-gradient)] text-white shadow-[var(--uf-shadow-floating)] hover:brightness-[1.02]",
+          "border border-white/20 [background:var(--uf-premium-gradient)] text-white shadow-[var(--uf-shadow-floating)] hover:brightness-[1.02]",
         destructive:
           "bg-destructive text-white shadow-[var(--uf-shadow-card)] hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
         outline:

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useApp } from "@/contexts/AppContext";
-import { CATEGORY_ICONS, MOCK_CHAT_ROOMS, MOCK_ITEMS } from "@/lib/data";
-import { ArrowLeft, MapPin, Clock, MessageCircle, Share2, Bookmark, ChevronRight, Sparkles, Loader2, CheckCircle2, ShieldCheck, HelpCircle, AlertTriangle } from "lucide-react";
+import { MOCK_ITEMS } from "@/lib/data";
+import { ArrowLeft, MapPin, Clock, MessageCircle, Share2, Bookmark, ChevronRight, Sparkles, Loader2, CheckCircle2, ShieldCheck, HelpCircle, AlertTriangle, LockKeyhole } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { CategoryIcon } from "@/components/TossComponents";
 import { trpc } from "@/lib/trpc";
 
 const USE_API = import.meta.env.VITE_USE_API === "true";
@@ -26,7 +27,7 @@ function getReportedLabel(item: any) {
 }
 
 export default function ItemDetailScreen() {
-  const { selectedItemId, setScreen, setSelectedChatId, setActiveTab } = useApp();
+  const { selectedItemId, setScreen, replaceScreen, goBack, setSelectedChatId, setActiveTab, isAuthenticated } = useApp();
   const [statusUpdateOpen, setStatusUpdateOpen] = useState(false);
   const numericItemId = Number(selectedItemId);
 
@@ -53,14 +54,6 @@ export default function ItemDetailScreen() {
       ? ["지갑 안에 들어 있던 물건은?", "마지막으로 사용한 장소는?", "겉면의 흠집이나 특징은?"]
       : ["정확한 색상과 브랜드는?", "안에 들어 있던 물건은?", "분실한 시간대는?"];
 
-  const openFallbackChat = () => {
-    const room = MOCK_CHAT_ROOMS.find((entry) => entry.itemId === selectedItemId) ?? MOCK_CHAT_ROOMS[0];
-    setSelectedChatId(room.id);
-    setActiveTab("chat");
-    setScreen("chat-room");
-    toast.success("익명 채팅방을 열었어요");
-  };
-
   const updateStatusMutation = trpc.items.updateStatus.useMutation({
     onSuccess: () => {
       toast.success("상태가 업데이트되었습니다!");
@@ -80,15 +73,20 @@ export default function ItemDetailScreen() {
         setScreen("chat-room");
       }
     },
-    onError: () => {
-      openFallbackChat();
+    onError: (error) => {
+      toast.error(error.message || "채팅방을 만들지 못했어요");
     },
   });
 
   const handleChat = async () => {
     if (!item) return;
+    if (!isAuthenticated) {
+      toast.info("익명 채팅은 로그인과 학교 인증 후 이용할 수 있어요");
+      replaceScreen("auth");
+      return;
+    }
     if (!USE_API || isMockItem || !item.userId) {
-      openFallbackChat();
+      toast.error("현재 미리보기에서는 실제 채팅방을 만들 수 없어요");
       return;
     }
     createChatRoomMutation.mutate({
@@ -109,7 +107,7 @@ export default function ItemDetailScreen() {
     return (
       <div className="uf-screen flex flex-col h-full transition-colors duration-300">
         <div className="uf-header px-4 pt-14 pb-3 flex items-center gap-3">
-          <button onClick={() => setScreen("home")} className="p-1 -ml-1">
+          <button onClick={goBack} className="p-1 -ml-1" aria-label="이전 화면으로 돌아가기">
             <ArrowLeft size={22} style={{ color: "var(--foreground)" }} />
           </button>
           <h1 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>게시물을 찾을 수 없어요</h1>
@@ -131,7 +129,7 @@ export default function ItemDetailScreen() {
     <div className="uf-screen flex flex-col h-full transition-colors duration-300">
       {/* Header */}
       <div className="uf-header px-4 pt-14 pb-3 flex items-center justify-between sticky top-0 z-40 transition-colors duration-300">
-        <button onClick={() => setScreen("home")} className="p-1 -ml-1">
+        <button onClick={goBack} className="p-1 -ml-1" aria-label="이전 화면으로 돌아가기">
           <ArrowLeft size={22} style={{ color: "var(--foreground)" }} />
         </button>
         <div className="flex items-center gap-3">
@@ -160,7 +158,7 @@ export default function ItemDetailScreen() {
             {item.imageUrl ? (
               <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
             ) : (
-              CATEGORY_ICONS[item.category as keyof typeof CATEGORY_ICONS]
+              <CategoryIcon category={item.category} size={54} strokeWidth={1.6} />
             )}
           </motion.div>
         </div>
@@ -284,14 +282,22 @@ export default function ItemDetailScreen() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.25 }}
-              className="uf-card p-4 flex items-center justify-between transition-colors duration-300"
+              className="uf-card p-4 transition-colors duration-300"
               style={{ background: "linear-gradient(135deg, var(--uf-danger-soft) 0%, var(--uf-warning-soft) 100%)", border: "1px solid color-mix(in srgb, var(--uf-orange) 22%, var(--border))" }}
             >
-              <div>
-                <p className="text-xs font-semibold" style={{ color: "var(--uf-orange)" }}>보상 포인트</p>
-                <p className="text-2xl font-extrabold" style={{ color: "var(--uf-orange)" }}>+{item.points}P</p>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold" style={{ color: "var(--uf-orange)" }}>습득자 보상</p>
+                  <p className="text-2xl font-extrabold" style={{ color: "var(--uf-orange)" }}>+{item.points}P</p>
+                </div>
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl" style={{ background: "var(--card)", color: "var(--uf-orange)" }}>
+                  <LockKeyhole size={20} />
+                </div>
               </div>
-              <ChevronRight size={20} style={{ color: "var(--uf-orange)" }} />
+              <div className="mt-3 flex items-center gap-2 rounded-2xl px-3 py-2" style={{ background: "color-mix(in srgb, var(--card) 74%, transparent)", color: "var(--muted-foreground)" }}>
+                <ShieldCheck size={14} style={{ color: "var(--uf-green)" }} />
+                <span className="text-[11px] font-semibold">분실자가 물건을 받았다고 확인하면 자동 지급돼요</span>
+              </div>
             </motion.div>
           )}
 
@@ -386,7 +392,7 @@ export default function ItemDetailScreen() {
                   className="mt-3 space-y-2"
                 >
                   <button
-                    onClick={() => USE_API && apiItem ? updateStatusMutation.mutate({ id: item.id, status: "resolved" }) : toast.success("시연 데이터에서는 화면 상태만 확인할 수 있어요")}
+                    onClick={() => USE_API && apiItem ? updateStatusMutation.mutate({ id: item.id, status: "resolved" }) : toast.success((item.points ?? 0) > 0 ? `수령 확인 완료 · 습득자에게 ${item.points}P가 지급돼요` : "물건을 받은 것으로 처리했어요")}
                     disabled={updateStatusMutation.isPending}
                     className="w-full py-3 rounded-xl font-bold text-white transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
                     style={{ background: "var(--uf-green)" }}
@@ -399,7 +405,7 @@ export default function ItemDetailScreen() {
                     ) : (
                       <>
                         <CheckCircle2 size={18} />
-                        찾았어요 ✓
+                        물건을 받았어요
                       </>
                     )}
                   </button>

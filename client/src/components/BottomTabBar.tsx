@@ -2,6 +2,7 @@
 import { useApp } from "@/contexts/AppContext";
 import { Home, Search, PlusCircle, MessageCircle, User } from "lucide-react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 const TABS = [
   { id: "home", label: "홈", icon: Home, screen: "home" as const, accent: "var(--uf-blue)" },
@@ -12,7 +13,7 @@ const TABS = [
 ];
 
 export default function BottomTabBar() {
-  const { activeTab, setActiveTab, setScreen } = useApp();
+  const { activeTab, setActiveTab, setScreen, setSearchScope, isAuthenticated } = useApp();
 
   return (
     <div className="uf-tab-bar">
@@ -28,6 +29,12 @@ export default function BottomTabBar() {
             aria-label={tab.label}
             aria-current={isActive ? "page" : undefined}
             onClick={() => {
+              if ((tab.id === "register" || tab.id === "chat") && !isAuthenticated) {
+                toast.info(`${tab.id === "register" ? "게시물 등록" : "익명 채팅"}은 로그인 후 이용할 수 있어요`);
+                setScreen("auth");
+                return;
+              }
+              if (tab.id === "search") setSearchScope("all");
               setActiveTab(tab.id);
               setScreen(tab.screen);
             }}

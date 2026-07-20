@@ -1,10 +1,11 @@
 // UniFind - 홈 화면
 import { useMemo, useState } from "react";
 import { useApp } from "@/contexts/AppContext";
-import { CATEGORY_ICONS, MOCK_ITEMS, UNIFIND_LOGO, type LostItem } from "@/lib/data";
+import { MOCK_ITEMS, UNIFIND_LOGO, UNIVERSITIES, type ItemCategory, type LostItem } from "@/lib/data";
 import {
   BarChart3,
   Bell,
+  Building2,
   Camera,
   ChevronRight,
   CheckCircle2,
@@ -15,12 +16,14 @@ import {
   Search,
   ShieldCheck,
   Sparkles,
+  TicketCheck,
   TrendingUp,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Modal } from "@/components/TossPopups";
-import { SchoolEmblem } from "@/components/TossComponents";
+import { CategoryIcon, SchoolEmblem } from "@/components/TossComponents";
 import { pageMotion, riseItem, softPop, staggerContainer, tapMotion, useCountUp } from "@/lib/motion";
+import { toast } from "sonner";
 
 const HOME_PROMO_POPUP_ID = "home-promo-welcome";
 
@@ -58,6 +61,17 @@ const ACTIONS = [
     action: "statistics" as const,
   },
 ];
+
+const QUICK_CATEGORIES: { category: ItemCategory; color: string; background: string }[] = [
+  { category: "블루투스 기기", color: "var(--uf-purple)", background: "var(--uf-purple-soft)" },
+  { category: "휴대폰/태블릿", color: "var(--uf-blue)", background: "var(--uf-blue-light)" },
+  { category: "지갑/카드", color: "var(--uf-amber)", background: "var(--uf-warning-soft)" },
+  { category: "열쇠", color: "var(--uf-green)", background: "var(--uf-success-soft)" },
+];
+
+const VISIT_CAMPUSES = UNIVERSITIES.filter((university) =>
+  ["서울대학교", "연세대학교", "고려대학교", "성균관대학교"].includes(university)
+);
 
 const MATCH_REASONS = [
   { label: "카테고리", value: "지갑/카드 일치", color: "var(--uf-blue)" },
@@ -231,13 +245,13 @@ function ItemRow({ item, index, onClick }: { item: LostItem; index: number; onCl
       <span className="absolute bottom-4 left-0 top-4 w-1 rounded-r-full" style={{ background: tone.accent }} />
       <div className="flex items-start gap-3 pl-1">
         <div
-          className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl text-2xl shadow-sm"
+          className="flex h-12 w-12 flex-shrink-0 self-center items-center justify-center overflow-hidden rounded-2xl text-2xl shadow-sm"
           style={{ background: tone.bg }}
         >
           {item.imageUrl ? (
             <img src={item.imageUrl} alt={item.title} className="h-full w-full object-cover" />
           ) : (
-            CATEGORY_ICONS[item.category]
+            <CategoryIcon category={item.category} size={22} />
           )}
         </div>
         <div className="min-w-0 flex-1">
@@ -270,7 +284,7 @@ function ItemRow({ item, index, onClick }: { item: LostItem; index: number; onCl
             <span>{item.date}</span>
           </div>
         </div>
-        <div className="flex flex-shrink-0 flex-col items-end gap-2">
+        <div className="flex flex-shrink-0 self-stretch flex-col items-end justify-center gap-2">
           {item.points > 0 && (
             <span className="rounded-full px-2 py-1 text-xs font-extrabold" style={{ background: "var(--uf-danger-soft)", color: "var(--uf-orange)" }}>
               +{item.points}P
@@ -287,17 +301,51 @@ function ItemRow({ item, index, onClick }: { item: LostItem; index: number; onCl
 }
 
 export default function HomeScreen() {
-  const { setScreen, setSelectedItemId, setRegisterType, userName, userUniversity, userPoints } = useApp();
+  const {
+    setScreen,
+    setSelectedItemId,
+    setRegisterType,
+    setFilterType,
+    setFilterCategory,
+    setSearchScope,
+    userName,
+    userUniversity,
+    userPoints,
+    activeUniversity,
+    visitPassUniversity,
+    activateVisitPass,
+    clearVisitPass,
+    isGuest,
+  } = useApp();
   const [notifCount] = useState(3);
   const [showPromoPopup, setShowPromoPopup] = useState(true);
+  const [feedType, setFeedType] = useState<"lost" | "found">("lost");
+  const [showVisitPass, setShowVisitPass] = useState(false);
+  const [selectedVisitUniversity, setSelectedVisitUniversity] = useState<string | null>(visitPassUniversity);
   const animatedPoints = useCountUp(userPoints);
 
-  const recentItems = useMemo(() => MOCK_ITEMS.slice(0, 5), []);
+  const browseItems = useMemo(() => MOCK_ITEMS.filter((item) => item.type === feedType).slice(0, 4), [feedType]);
   const urgentItems = useMemo(() => MOCK_ITEMS.filter((i) => i.points >= 500).slice(0, 2), []);
 
   const openItem = (id: string) => {
     setSelectedItemId(id);
     setScreen("item-detail");
+  };
+
+  const openCategory = (category: ItemCategory) => {
+    setSearchScope("all");
+    setFilterType("lost");
+    setFilterCategory(category);
+    setScreen("search");
+  };
+
+  const issueVisitPass = () => {
+    if (!selectedVisitUniversity) return;
+    activateVisitPass(selectedVisitUniversity);
+    setFilterType("lost");
+    setFilterCategory("전체");
+    setShowVisitPass(false);
+    toast.success(`${selectedVisitUniversity} 방문권이 24시간 활성화됐어요`);
   };
 
   return (
@@ -337,23 +385,98 @@ export default function HomeScreen() {
         </Modal>
       )}
 
+      {showVisitPass && (
+        <Modal
+          isOpen={showVisitPass}
+          onClose={() => setShowVisitPass(false)}
+          subtitle="CAMPUS PASS"
+          title="타 학교에서도 찾아보세요"
+        >
+          <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
+            방문한 학교를 선택하면 24시간 동안 해당 캠퍼스의 분실·습득 게시물만 모아볼 수 있어요.
+          </p>
+          <div className="space-y-2">
+            {VISIT_CAMPUSES.filter((university) => university !== userUniversity).map((university) => {
+              const isSelected = selectedVisitUniversity === university;
+              return (
+                <motion.button
+                  key={university}
+                  {...tapMotion}
+                  type="button"
+                  onClick={() => setSelectedVisitUniversity(university)}
+                  className="flex w-full items-center gap-3 rounded-2xl border p-3 text-left"
+                  style={{
+                    background: isSelected ? "var(--uf-blue-light)" : "var(--card)",
+                    borderColor: isSelected ? "color-mix(in srgb, var(--uf-blue) 38%, var(--border))" : "var(--border)",
+                  }}
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl" style={{ background: "var(--muted)", color: isSelected ? "var(--uf-blue)" : "var(--muted-foreground)" }}>
+                    <Building2 size={19} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-extrabold text-foreground">{university}</span>
+                    <span className="block text-[11px] font-semibold text-muted-foreground">방문 캠퍼스 게시물 보기</span>
+                  </span>
+                  {isSelected && <CheckCircle2 size={18} style={{ color: "var(--uf-blue)" }} />}
+                </motion.button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={issueVisitPass}
+            disabled={!selectedVisitUniversity}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-extrabold text-white transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45"
+            style={{ background: "var(--uf-premium-gradient)", boxShadow: "var(--uf-shadow-floating)" }}
+          >
+            <TicketCheck size={18} />
+            24시간 방문권 받기
+          </button>
+          {visitPassUniversity && (
+            <button
+              type="button"
+              onClick={() => {
+                clearVisitPass();
+                setSelectedVisitUniversity(null);
+                setShowVisitPass(false);
+                toast.success("내 학교 캠퍼스로 돌아왔어요");
+              }}
+              className="mt-2 w-full rounded-2xl py-3 text-xs font-bold text-muted-foreground"
+            >
+              방문 종료하고 내 학교로 돌아가기
+            </button>
+          )}
+        </Modal>
+      )}
+
       <motion.header variants={riseItem} className="relative z-10 px-5 pt-4">
         <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <img src={UNIFIND_LOGO} alt="UniFind" className="h-10 w-10 rounded-2xl object-cover shadow-[var(--uf-shadow-soft)]" />
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <SchoolEmblem name={userUniversity} size="sm" className="h-5 w-5 shadow-none" />
-                <p className="truncate text-xs font-bold text-muted-foreground">{userUniversity}</p>
-                <span
-                  className="rounded-full px-1.5 py-0.5 text-[9px] font-black"
-                  style={{ background: "color-mix(in srgb, var(--uf-blue) 10%, transparent)", color: "var(--uf-blue)" }}
-                >
-                  인증
-                </span>
-              </div>
-              <h1 className="mt-0.5 truncate text-[19px] font-extrabold leading-tight text-foreground">
-                {userName}님, 찾아볼까요
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-1.5 pl-1">
+              <SchoolEmblem
+                name={activeUniversity}
+                size="sm"
+                className="!h-7 !w-7 !rounded-[9px] !shadow-[0_5px_12px_rgba(37,99,235,0.10)]"
+              />
+              <p className="truncate text-xs font-semibold text-muted-foreground">{isGuest ? "캠퍼스 미리보기" : activeUniversity}</p>
+              <span
+                className="rounded-full px-1.5 py-0.5 text-[9px] font-medium leading-none"
+                style={{
+                  background: visitPassUniversity ? "var(--uf-purple-soft)" : "color-mix(in srgb, var(--uf-blue) 10%, transparent)",
+                  color: visitPassUniversity ? "var(--uf-purple)" : "var(--uf-blue)",
+                }}
+              >
+                {visitPassUniversity ? "방문 중" : isGuest ? "미인증" : "인증"}
+              </span>
+            </div>
+            <div className="mt-1.5 flex min-w-0 items-center gap-2.5">
+              <img
+                src={UNIFIND_LOGO}
+                alt="UniFind"
+                className="h-[45px] w-[45px] flex-shrink-0 rounded-2xl object-cover shadow-[var(--uf-shadow-soft)]"
+              />
+              <h1 className="truncate text-[19px] font-extrabold leading-tight text-foreground">
+                {userName}님, 찾아볼까요?
               </h1>
             </div>
           </div>
@@ -363,9 +486,9 @@ export default function HomeScreen() {
             className="uf-glass relative flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl"
             aria-label="알림"
           >
-            <Bell size={19} />
+            <Bell size={25} strokeWidth={1.8} />
             {notifCount > 0 && (
-              <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ background: "var(--uf-orange)" }}>
+              <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white shadow-[0_2px_5px_rgba(0,0,0,0.18)]" style={{ background: "var(--uf-orange)" }}>
                 {notifCount}
               </span>
             )}
@@ -377,17 +500,17 @@ export default function HomeScreen() {
         variants={staggerContainer}
         initial="initial"
         animate="animate"
-        className="scrollbar-hide relative z-10 flex-1 space-y-5 overflow-y-auto px-5 pb-7 pt-4"
+        className="scrollbar-hide relative z-10 flex-1 space-y-5 overflow-y-auto px-5 pb-7 pt-4 break-keep"
       >
         <motion.section variants={softPop} className="uf-home-hero-panel relative overflow-hidden rounded-[30px] p-5">
           <div className="relative z-10">
-            <div className="mb-3 flex items-center gap-2">
+            <div className="uf-ai-match-status mb-3 inline-flex items-center gap-2 rounded-full px-2.5 py-1.5">
               <span className="uf-live-dot" />
-              <span className="text-xs font-extrabold" style={{ color: "var(--uf-blue)" }}>
+              <span className="uf-ai-match-status-text relative z-10 text-xs font-extrabold" style={{ color: "var(--uf-blue)" }}>
                 AI 매칭 3건 대기 중
               </span>
             </div>
-            <h2 className="text-[25px] font-black leading-tight tracking-normal text-foreground">
+            <h2 className="text-[25px] font-[650] leading-tight tracking-normal text-foreground">
               잃어버렸거나 주웠다면
               <br />
               바로 연결해드릴게요
@@ -429,15 +552,86 @@ export default function HomeScreen() {
 
             <motion.button
               {...tapMotion}
-              onClick={() => setScreen("search")}
-              className="mt-4 flex w-full items-center justify-between text-left text-sm font-extrabold"
+              onClick={() => {
+                setFilterType("lost");
+                setFilterCategory("전체");
+                setSearchScope("all");
+                setScreen("search");
+              }}
+              className="relative mt-4 flex w-full items-center justify-center px-7 text-center text-sm font-extrabold"
               style={{ color: "var(--uf-blue)" }}
             >
-              이미 등록된 물건 검색하기
-              <ChevronRight size={16} />
+              <span>이미 등록된 물건 검색하기</span>
+              <ChevronRight size={17} className="absolute right-0" />
             </motion.button>
           </div>
         </motion.section>
+
+        <motion.section variants={riseItem}>
+          <div className="mb-3 flex items-end justify-between">
+            <div>
+              <h2 className="text-base font-extrabold text-foreground">무엇을 찾고 있나요?</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">종류를 고르면 분실 신고만 바로 보여드려요</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setFilterType("lost");
+                setFilterCategory("전체");
+                setSearchScope("all");
+                setScreen("search");
+              }}
+              className="text-xs font-bold"
+              style={{ color: "var(--uf-blue)" }}
+            >
+              전체
+            </button>
+          </div>
+          <motion.div variants={staggerContainer} className="grid grid-cols-4 gap-2">
+            {QUICK_CATEGORIES.map(({ category, color, background }) => (
+              <motion.button
+                key={category}
+                variants={softPop}
+                {...tapMotion}
+                type="button"
+                onClick={() => openCategory(category)}
+                className="uf-card flex min-h-[88px] min-w-0 flex-col items-center justify-center gap-2 px-1.5 py-3 text-center"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl" style={{ background, color }}>
+                  <CategoryIcon category={category} size={19} strokeWidth={2.2} />
+                </span>
+                <span className="w-full break-keep text-[10px] font-extrabold leading-tight text-foreground">{category}</span>
+              </motion.button>
+            ))}
+          </motion.div>
+        </motion.section>
+
+        <motion.button
+          variants={softPop}
+          {...tapMotion}
+          type="button"
+          onClick={() => {
+            setSelectedVisitUniversity(visitPassUniversity);
+            setShowVisitPass(true);
+          }}
+          className="uf-visit-pass-card relative flex w-full items-center gap-3 overflow-hidden rounded-[26px] p-4 text-left"
+        >
+          <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl" style={{ background: "var(--uf-purple-soft)", color: "var(--uf-purple)" }}>
+            <TicketCheck size={23} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[11px] font-extrabold" style={{ color: "var(--uf-purple)" }}>
+              {visitPassUniversity ? "방문권 사용 중" : "타 학교에서 잃어버렸나요?"}
+            </span>
+            <span className="mt-0.5 block truncate text-sm font-extrabold text-foreground">
+              {visitPassUniversity ? `${activeUniversity} 게시물 보는 중` : "24시간 타 학교 방문권 받기"}
+            </span>
+            <span className="mt-0.5 block text-[11px] font-semibold text-muted-foreground">
+              {visitPassUniversity ? "누르면 학교를 변경하거나 방문을 종료할 수 있어요" : "방문 캠퍼스의 분실·습득 목록으로 전환해요"}
+            </span>
+          </span>
+          <ChevronRight size={18} className="flex-shrink-0 text-muted-foreground" />
+        </motion.button>
 
         <motion.section variants={riseItem} className="grid grid-cols-3 gap-2.5">
           {[
@@ -445,13 +639,11 @@ export default function HomeScreen() {
             { label: "AI 매칭", value: "3건", icon: Sparkles, color: "var(--uf-green)" },
             { label: "해결률", value: "92%", icon: TrendingUp, color: "var(--uf-orange)" },
           ].map(({ label, value, icon: Icon, color }) => (
-            <motion.div key={label} variants={softPop} className="uf-mini-stat p-3">
-              <div className="mb-2 flex items-center justify-between">
-                <Icon size={15} style={{ color }} />
-                <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
-              </div>
-              <p className="text-base font-extrabold text-foreground">{value}</p>
-              <p className="mt-0.5 text-[10px] font-bold text-muted-foreground">{label}</p>
+            <motion.div key={label} variants={softPop} className="uf-mini-stat relative flex min-h-[104px] flex-col items-center justify-center p-3 text-center">
+              <span className="absolute right-3 top-3 h-1.5 w-1.5 rounded-full" style={{ background: color }} />
+              <Icon size={19} strokeWidth={1.9} style={{ color }} />
+              <p className="mt-2 text-xl font-bold leading-none text-foreground">{value}</p>
+              <p className="mt-1.5 text-xs font-medium text-muted-foreground">{label}</p>
             </motion.div>
           ))}
         </motion.section>
@@ -468,26 +660,26 @@ export default function HomeScreen() {
             <path d="M190 206 C236 164 288 180 364 120" fill="none" stroke="white" strokeOpacity="0.16" strokeWidth="18" strokeLinecap="round" />
           </svg>
           <div className="relative z-10">
-            <div className="mb-6 flex items-start justify-between">
+            <div className="mb-6 text-center">
               <div>
                 <p className="text-sm font-semibold text-white/78">내 리워드 포인트</p>
-                <div className="mt-1 flex items-end gap-1">
+                <div className="mt-1 flex items-end justify-center gap-1">
                   <span className="text-[42px] font-black leading-none tracking-normal">{animatedPoints.toLocaleString()}</span>
                   <span className="mb-1.5 text-base font-extrabold text-white/80">P</span>
                 </div>
               </div>
-              <span className="rounded-full bg-white/18 px-3 py-1.5 text-xs font-bold text-white backdrop-blur">
-                이번 달 +350P
+              <span className="mt-3 inline-flex rounded-full bg-white/18 px-3 py-1.5 text-xs font-bold text-white backdrop-blur">
+                이번 달 +{isGuest ? 0 : 350}P
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-2xl bg-white/14 px-3 py-3 backdrop-blur">
-                <p className="text-[11px] font-semibold text-white/68">AI 매칭</p>
+              <div className="rounded-2xl bg-white/14 px-3 py-3 text-center backdrop-blur">
+                <p className="text-[11px] font-semibold text-white/90">AI 매칭</p>
                 <p className="mt-1 text-lg font-extrabold">3건 대기</p>
               </div>
-              <div className="rounded-2xl bg-white/14 px-3 py-3 backdrop-blur">
-                <p className="text-[11px] font-semibold text-white/68">해결 기여</p>
-                <p className="mt-1 text-lg font-extrabold">상위 12%</p>
+              <div className="rounded-2xl bg-white/14 px-3 py-3 text-center backdrop-blur">
+                <p className="text-[11px] font-semibold text-white/90">해결 기여</p>
+                <p className="mt-1 text-lg font-extrabold">{isGuest ? "활동 전" : "상위 12%"}</p>
               </div>
             </div>
           </div>
@@ -595,11 +787,16 @@ export default function HomeScreen() {
               </div>
               <motion.button
                 {...tapMotion}
-                onClick={() => setScreen("search")}
-                className="flex items-center gap-0.5 text-xs font-bold"
+                onClick={() => {
+                  setFilterType("lost");
+                  setFilterCategory("전체");
+                  setSearchScope("all");
+                  setScreen("search");
+                }}
+                className="flex items-center gap-1 text-[15px] font-bold"
                 style={{ color: "var(--uf-blue)" }}
               >
-                전체보기 <ChevronRight size={13} />
+                전체보기 <ChevronRight size={16} />
               </motion.button>
             </div>
             <motion.div variants={staggerContainer} className="space-y-3">
@@ -615,21 +812,47 @@ export default function HomeScreen() {
             <div>
               <div className="flex items-center gap-2">
                 <Clock size={16} className="text-foreground" />
-                <h2 className="text-base font-extrabold text-foreground">최근 등록</h2>
+                <h2 className="text-base font-extrabold text-foreground">캠퍼스 물건 목록</h2>
               </div>
-              <p className="mt-0.5 text-xs text-muted-foreground">캠퍼스에서 방금 올라온 물건</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">분실과 습득을 나눠서 확인하세요</p>
             </div>
             <motion.button
               {...tapMotion}
-              onClick={() => setScreen("search")}
-              className="flex items-center gap-0.5 text-xs font-bold"
+              onClick={() => {
+                setFilterType(feedType);
+                setFilterCategory("전체");
+                setSearchScope("all");
+                setScreen("search");
+              }}
+              className="flex items-center gap-1 text-[15px] font-bold"
               style={{ color: "var(--uf-blue)" }}
             >
-              전체보기 <ChevronRight size={13} />
+              전체보기 <ChevronRight size={16} />
             </motion.button>
           </div>
+          <div className="mb-3 grid grid-cols-2 rounded-[18px] bg-muted p-1">
+            {(["lost", "found"] as const).map((type) => {
+              const isActive = feedType === type;
+              return (
+                <motion.button
+                  key={type}
+                  {...tapMotion}
+                  type="button"
+                  onClick={() => setFeedType(type)}
+                  className="rounded-[14px] px-3 py-2.5 text-xs font-extrabold"
+                  style={{
+                    background: isActive ? "var(--card)" : "transparent",
+                    color: isActive ? (type === "lost" ? "var(--uf-orange)" : "var(--uf-blue)") : "var(--muted-foreground)",
+                    boxShadow: isActive ? "var(--uf-shadow-soft)" : "none",
+                  }}
+                >
+                  {type === "lost" ? "분실 신고" : "습득 등록"}
+                </motion.button>
+              );
+            })}
+          </div>
           <motion.div variants={staggerContainer} className="space-y-3">
-            {recentItems.map((item, index) => (
+            {browseItems.map((item, index) => (
               <ItemRow key={item.id} item={item} index={index} onClick={() => openItem(item.id)} />
             ))}
           </motion.div>

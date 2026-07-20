@@ -1,7 +1,42 @@
 // Toss 스타일 재사용 가능 컴포넌트
 import { ReactNode } from "react";
 import { motion } from "framer-motion";
-import { Loader2 } from "lucide-react";
+import {
+  Backpack,
+  Bluetooth,
+  CreditCard,
+  KeyRound,
+  Loader2,
+  Package,
+  Shirt,
+  Smartphone,
+  Umbrella,
+  type LucideIcon,
+} from "lucide-react";
+import type { ItemCategory } from "@/lib/data";
+
+const CATEGORY_ICON_COMPONENTS: Record<ItemCategory, LucideIcon> = {
+  "지갑/카드": CreditCard,
+  "블루투스 기기": Bluetooth,
+  "휴대폰/태블릿": Smartphone,
+  "가방": Backpack,
+  "의류": Shirt,
+  "열쇠": KeyRound,
+  "우산": Umbrella,
+  "기타": Package,
+};
+
+interface CategoryIconProps {
+  category: ItemCategory;
+  size?: number;
+  strokeWidth?: number;
+  className?: string;
+}
+
+export function CategoryIcon({ category, size = 20, strokeWidth = 2, className = "" }: CategoryIconProps) {
+  const Icon = CATEGORY_ICON_COMPONENTS[category] ?? Package;
+  return <Icon aria-hidden="true" size={size} strokeWidth={strokeWidth} className={className} />;
+}
 
 // ============ TossButton ============
 interface TossButtonProps {

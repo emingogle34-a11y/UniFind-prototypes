@@ -75,13 +75,13 @@ function getStatusMeta(status: CenterItem["status"]) {
     return { label: "보관 중", icon: CheckCircle2, bg: "rgba(22, 163, 74, 0.12)", color: "var(--uf-green)" };
   }
   if (status === "claimed") {
-    return { label: "인수 완료", icon: ShieldCheck, bg: "var(--uf-blue-light)", color: "var(--uf-blue)" };
+    return { label: "주인에게 전달", icon: ShieldCheck, bg: "var(--uf-blue-light)", color: "var(--uf-blue)" };
   }
   return { label: "보관 만료", icon: AlertCircle, bg: "var(--muted)", color: "var(--muted-foreground)" };
 }
 
 export default function LostAndFoundCenterScreen() {
-  const { setScreen } = useApp();
+  const { goBack } = useApp();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [query, setQuery] = useState("");
 
@@ -103,7 +103,7 @@ export default function LostAndFoundCenterScreen() {
     <div className="uf-screen flex h-full flex-col">
       <div className="uf-header sticky top-0 z-40 px-4 pb-4 pt-14">
         <div className="flex items-center gap-3">
-          <button onClick={() => setScreen("mypage")} className="p-1 -ml-1">
+          <button onClick={goBack} className="p-1 -ml-1" aria-label="이전 화면으로 돌아가기">
             <ArrowLeft size={22} style={{ color: "var(--foreground)" }} />
           </button>
           <div>
@@ -133,7 +133,7 @@ export default function LostAndFoundCenterScreen() {
             <div className="grid grid-cols-3 gap-2">
               {[
                 { label: "보관 중", value: `${availableCount}건` },
-                { label: "인수 완료", value: `${claimedCount}건` },
+                { label: "주인에게 전달", value: `${claimedCount}건` },
                 { label: "운영", value: "09-18시" },
               ].map((stat) => (
                 <div key={stat.label} className="rounded-2xl bg-white/12 p-3">
@@ -270,9 +270,9 @@ export default function LostAndFoundCenterScreen() {
                     <div className="mt-4 flex gap-2">
                       <button
                         className="uf-btn-primary flex-1 rounded-2xl py-3 text-sm font-bold"
-                        onClick={() => toast.success("센터 방문 시 학생증과 본인 확인 답변을 준비해주세요.")}
+                        onClick={() => toast.success("내 물건이 맞다면 센터 방문 시 학생증과 확인 답변을 준비해주세요.")}
                       >
-                        인수 요청
+                        내 물건 같아요
                       </button>
                       <button
                         className="rounded-2xl px-4 py-3 text-sm font-bold transition-all active:scale-95"

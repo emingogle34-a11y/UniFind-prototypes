@@ -1,13 +1,13 @@
 // UniFind - 알림 설정 화면
 import { useEffect, useState } from "react";
 import { useApp } from "@/contexts/AppContext";
-import { ChevronRight, Bell, MessageCircle, Gift, AlertCircle } from "lucide-react";
+import { ArrowLeft, ChevronRight, Bell, MessageCircle, Gift, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { notificationService } from "@/services/NotificationService";
 
 export default function NotificationsSettingScreen() {
-  const { setScreen } = useApp();
+  const { goBack } = useApp();
   const [isEnabled, setIsEnabled] = useState(false);
   const [settings, setSettings] = useState({
     foundItems: true,
@@ -96,15 +96,11 @@ export default function NotificationsSettingScreen() {
         className="bg-background px-5 pt-14 pb-4 sticky top-0 z-40 transition-colors duration-300"
         style={{ boxShadow: "0 1px 0 var(--border)" }}
       >
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-extrabold text-foreground">알림 설정</h1>
-          <button
-            onClick={() => setScreen("mypage")}
-            className="p-2 rounded-lg transition-all active:scale-95"
-            style={{ background: "var(--muted)", color: "var(--foreground)" }}
-          >
-            ✕
+        <div className="flex items-center gap-2">
+          <button onClick={goBack} className="-ml-2 rounded-full p-2 transition-all active:scale-95" aria-label="이전 화면으로 돌아가기">
+            <ArrowLeft size={21} className="text-foreground" />
           </button>
+          <h1 className="text-xl font-extrabold text-foreground">알림 설정</h1>
         </div>
       </div>
 

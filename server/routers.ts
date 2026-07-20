@@ -6,7 +6,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { 
-  createLostItem, 
+  createLostItemWithReward,
   getLostItems, 
   getLostItemById, 
   updateLostItemStatus,
@@ -106,6 +106,16 @@ export const appRouter = router({
         return items;
       }),
 
+    mine: protectedProcedure
+      .input(z.object({
+        building: z.string().optional(),
+        type: z.enum(["lost", "found"]).optional(),
+        status: z.string().optional(),
+      }).optional())
+      .query(async ({ ctx, input }) => {
+        return getLostItems({ ...input, userId: ctx.user.id });
+      }),
+
     // 분실물 상세 조회
     getById: publicProcedure
       .input(z.number())
@@ -200,7 +210,8 @@ export const appRouter = router({
         }
 
         // 분실물 생성
-        const result = await createLostItem({
+        const rewardPoints = input.type === "found" ? 200 : 100;
+        const result = await createLostItemWithReward({
           userId: ctx.user.id,
           type: input.type,
           category: input.category,
@@ -215,7 +226,7 @@ export const appRouter = router({
           status: "active",
           points: input.points || 0,
           isUrgent: input.isUrgent || false,
-        });
+        }, rewardPoints);
 
         return result;
       }),

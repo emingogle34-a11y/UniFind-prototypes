@@ -3,11 +3,11 @@
 
 export type ItemCategory =
   | "지갑/카드"
-  | "전자기기"
+  | "블루투스 기기"
+  | "휴대폰/태블릿"
   | "가방"
   | "의류"
   | "열쇠"
-  | "이어폰"
   | "우산"
   | "기타";
 
@@ -62,22 +62,22 @@ export interface PointHistory {
 
 export const CATEGORY_ICONS: Record<ItemCategory, string> = {
   "지갑/카드": "💳",
-  "전자기기": "📱",
+  "블루투스 기기": "🎧",
+  "휴대폰/태블릿": "📱",
   "가방": "🎒",
   "의류": "👕",
   "열쇠": "🔑",
-  "이어폰": "🎧",
   "우산": "☂️",
   "기타": "📦",
 };
 
 export const CATEGORY_COLORS: Record<ItemCategory, string> = {
   "지갑/카드": "bg-amber-100 text-amber-700",
-  "전자기기": "bg-blue-100 text-blue-700",
+  "블루투스 기기": "bg-indigo-100 text-indigo-700",
+  "휴대폰/태블릿": "bg-blue-100 text-blue-700",
   "가방": "bg-purple-100 text-purple-700",
   "의류": "bg-pink-100 text-pink-700",
   "열쇠": "bg-yellow-100 text-yellow-700",
-  "이어폰": "bg-indigo-100 text-indigo-700",
   "우산": "bg-cyan-100 text-cyan-700",
   "기타": "bg-gray-100 text-gray-600",
 };
@@ -103,14 +103,14 @@ export const MOCK_ITEMS: LostItem[] = [
   {
     id: "2",
     type: "found",
-    category: "전자기기",
+    category: "블루투스 기기",
     title: "에어팟 프로 습득했습니다",
     description: "공학관 B동 1층 복도에서 에어팟 프로 케이스를 발견했습니다. 분실하신 분 연락 주세요.",
     location: "공학관 B동 1층",
     date: "4시간 전",
     imageUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663567112870/bUFAa6fENchaSkWfKu7FJr/item-airpods-white-UmAyxaV279qD2xaZqJtMq2.webp",
     authorName: "이서연",
-    authorUniversity: "명지대학교",
+    authorUniversity: "연세대학교",
     points: 0,
     status: "습득",
     aiConfidence: 99,
@@ -154,13 +154,13 @@ export const MOCK_ITEMS: LostItem[] = [
   {
     id: "5",
     type: "lost",
-    category: "이어폰",
+    category: "블루투스 기기",
     title: "갤럭시 버즈 분실",
     description: "체육관 샤워실에서 갤럭시 버즈 2 프로를 분실했습니다. 케이스 색상은 화이트입니다.",
     location: "체육관",
     date: "2일 전",
     authorName: "정하은",
-    authorUniversity: "명지대학교",
+    authorUniversity: "연세대학교",
     points: 200,
     status: "분실",
     aiConfidence: 91,
@@ -186,13 +186,13 @@ export const MOCK_ITEMS: LostItem[] = [
   {
     id: "7",
     type: "lost",
-    category: "전자기기",
+    category: "휴대폰/태블릿",
     title: "아이패드 분실 (긴급)",
     description: "경영관 세미나실에서 아이패드 프로 12.9인치를 분실했습니다. 케이스는 네이비 색상이고 애플펜슬도 같이 있었어요.",
     location: "경영관 세미나실",
     date: "30분 전",
     authorName: "강민서",
-    authorUniversity: "명지대학교",
+    authorUniversity: "고려대학교",
     points: 1000,
     status: "분실",
     aiConfidence: 98,
@@ -234,13 +234,13 @@ export const MOCK_ITEMS: LostItem[] = [
   {
     id: "10",
     type: "found",
-    category: "전자기기",
+    category: "휴대폰/태블릿",
     title: "아이폰 14 습득",
     description: "학생회관 2층 화장실에서 아이폰 14를 발견했습니다. 케이스는 투명합니다.",
     location: "학생회관 2층",
     date: "1시간 전",
     authorName: "김준호",
-    authorUniversity: "명지대학교",
+    authorUniversity: "서울대학교",
     points: 0,
     status: "습득",
     aiConfidence: 96,
@@ -256,7 +256,7 @@ export const MOCK_ITEMS: LostItem[] = [
     location: "공학관 1층 카페",
     date: "30분 전",
     authorName: "박수진",
-    authorUniversity: "명지대학교",
+    authorUniversity: "성균관대학교",
     points: 800,
     status: "분실",
     aiConfidence: 92,
@@ -371,7 +371,7 @@ export const MOCK_MESSAGES: ChatMessage[] = [
 
 export const MOCK_POINT_HISTORY: PointHistory[] = [
   { id: "p1", type: "earn", amount: 100, reason: "분실물 등록", date: "오늘" },
-  { id: "p2", type: "earn", amount: 300, reason: "습득물 신고 완료", date: "어제" },
+  { id: "p2", type: "earn", amount: 300, reason: "물건 전달 보상 (수령 확인)", date: "어제" },
   { id: "p3", type: "earn", amount: 50, reason: "출석 보너스", date: "2일 전" },
   { id: "p4", type: "spend", amount: -200, reason: "긴급 알림 발송", date: "3일 전" },
   { id: "p5", type: "earn", amount: 500, reason: "분실물 찾아주기 완료", date: "1주 전" },
