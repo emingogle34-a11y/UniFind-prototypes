@@ -1,6 +1,18 @@
-import { eq, desc, and, or, sql } from "drizzle-orm";
+import { eq, desc, and, or, sql, like, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, lostItems, InsertLostItem, chatRooms, InsertChatRoom, chatMessages, InsertChatMessage } from "../drizzle/schema";
+import {
+  InsertUser,
+  users,
+  lostItems,
+  InsertLostItem,
+  chatRooms,
+  InsertChatRoom,
+  chatMessages,
+  InsertChatMessage,
+  reports,
+  adminAuditLogs,
+  InsertAdminAuditLog,
+} from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -137,7 +149,7 @@ export async function getLostItems(filters?: { building?: string; type?: "lost" 
   const db = await getDb();
   if (!db) return [];
   
-  const conditions: any[] = [];
+  const conditions: any[] = [eq(lostItems.isHidden, false)];
   if (filters?.building) conditions.push(eq(lostItems.building, filters.building));
   if (filters?.type) conditions.push(eq(lostItems.type, filters.type as any));
   if (filters?.status) conditions.push(eq(lostItems.status, filters.status as any));
@@ -194,4 +206,170 @@ export async function getChatMessages(roomId: number) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(chatMessages).where(eq(chatMessages.roomId, roomId)).orderBy(desc(chatMessages.createdAt));
+}
+
+export async function getAdminDashboardStats() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [[userCount], [itemCount], [chatRoomCount], [messageCount], [reportCount]] = await Promise.all([
+    db.select({ count: sql<number>`count(*)` }).from(users),
+    db.select({ count: sql<number>`count(*)` }).from(lostItems),
+    db.select({ count: sql<number>`count(*)` }).from(chatRooms),
+    db.select({ count: sql<number>`count(*)` }).from(chatMessages),
+    db.select({ count: sql<number>`count(*)` }).from(reports),
+  ]);
+
+  return {
+    users: Number(userCount?.count ?? 0),
+    items: Number(itemCount?.count ?? 0),
+    chatRooms: Number(chatRoomCount?.count ?? 0),
+    messages: Number(messageCount?.count ?? 0),
+    reports: Number(reportCount?.count ?? 0),
+  };
+}
+
+export async function listAdminUsers(input: { query?: string; page: number; pageSize: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const query = input.query?.trim();
+  const search = query
+    ? or(
+        like(users.name, `%${query}%`),
+        like(users.nickname, `%${query}%`),
+        like(users.email, `%${query}%`),
+      )
+    : undefined;
+  const offset = (input.page - 1) * input.pageSize;
+  const rows = await db
+    .select()
+    .from(users)
+    .where(search)
+    .orderBy(desc(users.createdAt))
+    .limit(input.pageSize)
+    .offset(offset);
+  const [totalRow] = await db.select({ count: sql<number>`count(*)` }).from(users).where(search);
+
+  return { rows, total: Number(totalRow?.count ?? 0), page: input.page, pageSize: input.pageSize };
+}
+
+export async function updateAdminUser(
+  id: number,
+  values: {
+    role?: "user" | "admin";
+    suspendedAt?: Date | null;
+    suspensionReason?: string | null;
+  },
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set(values).where(eq(users.id, id));
+  return db.select().from(users).where(eq(users.id, id)).limit(1).then(rows => rows[0] ?? null);
+}
+
+export async function listAdminItems(input: {
+  query?: string;
+  type?: "lost" | "found";
+  status?: "active" | "resolved" | "expired";
+  hidden?: boolean;
+  page: number;
+  pageSize: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const conditions: any[] = [];
+  const query = input.query?.trim();
+  if (query) {
+    conditions.push(or(
+      like(lostItems.title, `%${query}%`),
+      like(lostItems.description, `%${query}%`),
+      like(lostItems.location, `%${query}%`),
+    ));
+  }
+  if (input.type) conditions.push(eq(lostItems.type, input.type));
+  if (input.status) conditions.push(eq(lostItems.status, input.status));
+  if (input.hidden !== undefined) conditions.push(eq(lostItems.isHidden, input.hidden));
+  const where = conditions.length ? and(...conditions) : undefined;
+  const offset = (input.page - 1) * input.pageSize;
+
+  const rows = await db
+    .select({ item: lostItems, ownerName: users.name, ownerEmail: users.email })
+    .from(lostItems)
+    .leftJoin(users, eq(lostItems.userId, users.id))
+    .where(where)
+    .orderBy(desc(lostItems.createdAt))
+    .limit(input.pageSize)
+    .offset(offset);
+  const [totalRow] = await db.select({ count: sql<number>`count(*)` }).from(lostItems).where(where);
+
+  return { rows, total: Number(totalRow?.count ?? 0), page: input.page, pageSize: input.pageSize };
+}
+
+export async function updateAdminItem(
+  id: number,
+  values: {
+    title?: string;
+    description?: string | null;
+    category?: string;
+    location?: string;
+    building?: string | null;
+    status?: "active" | "resolved" | "expired";
+    isHidden?: boolean;
+    moderationNote?: string | null;
+  },
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(lostItems).set(values).where(eq(lostItems.id, id));
+  return getLostItemById(id);
+}
+
+export async function deleteAdminItem(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.transaction(async tx => {
+    const rooms = await tx.select({ id: chatRooms.id }).from(chatRooms).where(eq(chatRooms.itemId, id));
+    const roomIds = rooms.map(room => room.id);
+    if (roomIds.length) {
+      await tx.delete(chatMessages).where(inArray(chatMessages.roomId, roomIds));
+      await tx.delete(chatRooms).where(inArray(chatRooms.id, roomIds));
+    }
+    await tx.delete(lostItems).where(eq(lostItems.id, id));
+    return { success: true } as const;
+  });
+}
+
+export async function listAdminReports(input: { status?: "pending" | "reviewing" | "resolved" | "dismissed"; page: number; pageSize: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const where = input.status ? eq(reports.status, input.status) : undefined;
+  const offset = (input.page - 1) * input.pageSize;
+  const rows = await db.select().from(reports).where(where).orderBy(desc(reports.createdAt)).limit(input.pageSize).offset(offset);
+  const [totalRow] = await db.select({ count: sql<number>`count(*)` }).from(reports).where(where);
+  return { rows, total: Number(totalRow?.count ?? 0), page: input.page, pageSize: input.pageSize };
+}
+
+export async function updateAdminReport(
+  id: number,
+  values: { status: "pending" | "reviewing" | "resolved" | "dismissed"; handledBy: number; handledAt: Date },
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(reports).set(values).where(eq(reports.id, id));
+  return db.select().from(reports).where(eq(reports.id, id)).limit(1).then(rows => rows[0] ?? null);
+}
+
+export async function writeAdminAuditLog(log: InsertAdminAuditLog) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(adminAuditLogs).values(log);
+}
+
+export async function listAdminAuditLogs(limit = 50) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(adminAuditLogs).orderBy(desc(adminAuditLogs.createdAt)).limit(limit);
 }

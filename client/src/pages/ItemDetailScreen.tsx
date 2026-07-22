@@ -142,7 +142,7 @@ export default function ItemDetailScreen() {
         </div>
       </div>
 
-      <div className="uf-page-enter overflow-y-auto pb-32">
+      <div className="uf-page-enter overflow-y-auto pb-28">
         {/* Image hero */}
         <div
           className="w-full flex items-center justify-center py-12 transition-colors duration-300"
@@ -425,7 +425,7 @@ export default function ItemDetailScreen() {
       </div>
 
       {/* Fixed action buttons */}
-      <div className="fixed bottom-24 left-0 right-0 px-4 py-3 flex gap-2 transition-colors duration-300 uf-header">
+      <div className="fixed bottom-0 left-1/2 z-50 flex w-full max-w-[390px] -translate-x-1/2 gap-2 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] transition-colors duration-300 uf-header">
         <button
           onClick={handleChat}
           className="uf-btn-primary flex-1 py-3 rounded-2xl font-bold text-white transition-all active:scale-95 flex items-center justify-center gap-2"

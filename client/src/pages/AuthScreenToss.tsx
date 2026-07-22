@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { useApp } from "@/contexts/AppContext";
+import { trpc } from "@/lib/trpc";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -192,13 +193,13 @@ function PremiumPanel({ children, className = "" }: { children: ReactNode; class
   );
 }
 
-function BrandLockup() {
+function BrandLockup({ onLogoInteraction }: { onLogoInteraction: () => void }) {
   return (
     <motion.div variants={stagger} initial="initial" animate="animate" className="pt-1">
       <motion.div variants={riseItem} className="flex items-center gap-3">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[19px] border border-white/70 bg-white shadow-[0_14px_34px_rgba(37,99,235,0.13)]">
+        <button type="button" aria-label="UniFind" onClick={onLogoInteraction} className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[19px] border border-white/70 bg-white shadow-[0_14px_34px_rgba(37,99,235,0.13)]">
           <img src={UNIFIND_LOGO} alt="UniFind" className="h-9 w-9 object-contain" />
-        </div>
+        </button>
         <div className="min-w-0">
           <p className="text-xs font-extrabold tracking-[0.18em] text-[color:var(--uf-blue)]">UNIFIND</p>
           <h1 className="text-[1.72rem] font-black leading-[1.14] tracking-[0] text-[color:var(--foreground)]">
@@ -556,14 +557,16 @@ function LandingScreen({
   onLogin,
   onSignup,
   onPreview,
+  onLogoInteraction,
 }: {
   onLogin: () => void;
   onSignup: () => void;
   onPreview: () => void;
+  onLogoInteraction: () => void;
 }) {
   return (
     <motion.div variants={stagger} initial="initial" animate="animate" className="flex flex-1 flex-col">
-      <BrandLockup />
+      <BrandLockup onLogoInteraction={onLogoInteraction} />
       <FinderHeroVisual />
       <div className="mt-5">
         <TrustStrip />
@@ -1048,7 +1051,30 @@ export default function AuthScreenToss() {
   const [isLoading, setIsLoading] = useState(false);
   const [showUnivList, setShowUnivList] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showAccessPrompt, setShowAccessPrompt] = useState(false);
+  const [accessCode, setAccessCode] = useState("");
+  const [accessError, setAccessError] = useState("");
   const loadingGuardRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const logoSequenceRef = useRef({ count: 0, startedAt: 0, timer: null as number | null });
+  const accessMutation = trpc.admin.masterKeyLogin.useMutation({
+    onSuccess: () => {
+      sessionStorage.setItem("unifind-admin-session-hint", "1");
+      setShowAccessPrompt(false);
+      window.location.replace("/admin");
+    },
+    onError: (error) => {
+      const code = error.data?.code;
+      if (code === "UNAUTHORIZED" || code === "TOO_MANY_REQUESTS") {
+        setAccessError("비밀번호가 올바르지 않습니다.");
+        return;
+      }
+      if (code === "PRECONDITION_FAILED") {
+        setAccessError("서비스 설정을 확인해주세요.");
+        return;
+      }
+      setAccessError("서버에 연결할 수 없습니다.");
+    },
+  });
 
   const navigateStep = (nextStep: AuthStep, nextDirection = 1) => {
     setDirection(nextDirection);
@@ -1073,6 +1099,47 @@ export default function AuthScreenToss() {
   };
 
   useEffect(() => clearLoadingGuard, []);
+  useEffect(() => () => {
+    if (logoSequenceRef.current.timer) clearTimeout(logoSequenceRef.current.timer);
+  }, []);
+
+  const resetLogoSequence = () => {
+    if (logoSequenceRef.current.timer) clearTimeout(logoSequenceRef.current.timer);
+    logoSequenceRef.current = { count: 0, startedAt: 0, timer: null };
+  };
+
+  const handleLogoInteraction = () => {
+    const now = Date.now();
+    const sequence = logoSequenceRef.current;
+
+    if (!sequence.startedAt || now - sequence.startedAt > 2_000) {
+      resetLogoSequence();
+      logoSequenceRef.current = {
+        count: 1,
+        startedAt: now,
+        timer: window.setTimeout(resetLogoSequence, 2_000),
+      };
+      return;
+    }
+
+    sequence.count += 1;
+    if (sequence.count < 6) return;
+
+    resetLogoSequence();
+    setAccessCode("");
+    setAccessError("");
+    setShowAccessPrompt(true);
+  };
+
+  const submitAccessCode = () => {
+    if (accessMutation.isPending) return;
+    if (accessCode.length < 8) {
+      setAccessError("비밀번호가 올바르지 않습니다.");
+      return;
+    }
+    setAccessError("");
+    accessMutation.mutate({ masterKey: accessCode });
+  };
 
   const validateFields = (mode: "login" | "signup") => {
     const nextErrors: Partial<Record<FieldName, string>> = {};
@@ -1163,6 +1230,7 @@ export default function AuthScreenToss() {
                   setIsAuthenticated(false);
                   replaceScreen("home");
                 }}
+                onLogoInteraction={handleLogoInteraction}
               />
             )}
             {step === "login" && (
@@ -1229,6 +1297,55 @@ export default function AuthScreenToss() {
           setShowUnivList(false);
         }}
       />
+
+      <Modal
+        isOpen={showAccessPrompt}
+        onClose={() => {
+          setShowAccessPrompt(false);
+          setAccessCode("");
+          setAccessError("");
+        }}
+        title="보안 확인"
+        subtitle="계속하려면 비밀번호를 입력해주세요."
+        actions={[
+          {
+            label: "취소",
+            onClick: () => {
+              setShowAccessPrompt(false);
+              setAccessCode("");
+              setAccessError("");
+            },
+            variant: "secondary",
+          },
+          {
+            label: accessMutation.isPending ? "확인 중" : "확인",
+            onClick: submitAccessCode,
+            variant: "primary",
+          },
+        ]}
+      >
+        <div className="space-y-2">
+          <div className={`flex h-12 items-center gap-3 rounded-2xl border px-4 transition-colors ${accessError ? "border-destructive" : "border-[color:var(--border)] focus-within:border-[color:var(--uf-blue)]"}`}>
+            <Lock size={18} className="text-[color:var(--muted-foreground)]" />
+            <input
+              autoFocus
+              type="password"
+              value={accessCode}
+              onChange={(event) => {
+                setAccessCode(event.target.value);
+                setAccessError("");
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") submitAccessCode();
+              }}
+              autoComplete="current-password"
+              placeholder="비밀번호"
+              className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-[color:var(--foreground)] outline-none placeholder:text-[color:var(--muted-foreground)]"
+            />
+          </div>
+          {accessError && <p className="px-1 text-xs font-semibold text-destructive">{accessError}</p>}
+        </div>
+      </Modal>
 
       <Modal
         isOpen={showHelp}

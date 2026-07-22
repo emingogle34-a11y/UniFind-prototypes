@@ -62,6 +62,8 @@ interface AppContextType {
   setActiveTab: (tab: string) => void;
   isAuthenticated: boolean;
   setIsAuthenticated: (v: boolean) => void;
+  isAdmin: boolean;
+  isAuthLoading: boolean;
   userPoints: number;
   setUserPoints: (v: number) => void;
   userUniversity: string;
@@ -95,8 +97,11 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const isAdminPath = typeof window !== "undefined" && window.location.pathname === "/admin";
+  const hasAdminSessionHint = typeof window !== "undefined" && sessionStorage.getItem("unifind-admin-session-hint") === "1";
+  const shouldCheckServerAuth = USE_API || isAdminPath || hasAdminSessionHint;
   const authMeQuery = trpc.auth.me.useQuery(undefined, {
-    enabled: USE_API,
+    enabled: shouldCheckServerAuth,
     retry: false,
     refetchOnWindowFocus: false,
     staleTime: 30_000,
@@ -174,6 +179,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const hasServerUser = Boolean(serverUser);
+  const isAdmin = serverUser?.role === "admin";
+  const isAuthLoading = shouldCheckServerAuth && authMeQuery.isLoading;
   const isGuest = !isAuthenticated && !hasServerUser;
   const userRealName = serverUser?.name ?? localUserName;
   const userNickname = serverUser ? serverUser.nickname : localUserNickname;
@@ -195,9 +202,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    if (!USE_API || authMeQuery.isLoading) return;
+    if (!shouldCheckServerAuth || authMeQuery.isLoading) return;
     setIsAuthenticated(Boolean(serverUser));
-  }, [authMeQuery.isLoading, serverUser]);
+  }, [authMeQuery.isLoading, serverUser, shouldCheckServerAuth]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -232,6 +239,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         selectedChatId, setSelectedChatId,
         activeTab, setActiveTab,
         isAuthenticated, setIsAuthenticated,
+        isAdmin,
+        isAuthLoading,
         userPoints, setUserPoints,
         userUniversity, setUserUniversity,
         userName, setUserName,

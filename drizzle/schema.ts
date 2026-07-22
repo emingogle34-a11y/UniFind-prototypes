@@ -20,6 +20,8 @@ export const users = mysqlTable("users", {
   points: int("points").default(0).notNull(),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  suspendedAt: timestamp("suspendedAt"),
+  suspensionReason: varchar("suspensionReason", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -47,6 +49,8 @@ export const lostItems = mysqlTable("lostItems", {
   status: mysqlEnum("status", ["active", "resolved", "expired"]).default("active").notNull(),
   points: int("points").default(0), // 보상 포인트
   isUrgent: boolean("isUrgent").default(false),
+  isHidden: boolean("isHidden").default(false).notNull(),
+  moderationNote: varchar("moderationNote", { length: 500 }),
   reportedAt: timestamp("reportedAt").defaultNow().notNull(),
   resolvedAt: timestamp("resolvedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -91,6 +95,39 @@ export const chatMessages = mysqlTable("chatMessages", {
 
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type InsertChatMessage = typeof chatMessages.$inferInsert;
+
+export const reports = mysqlTable("reports", {
+  id: int("id").autoincrement().primaryKey(),
+  reporterUserId: int("reporterUserId"),
+  targetType: mysqlEnum("targetType", ["user", "item", "chat"]).notNull(),
+  targetId: int("targetId").notNull(),
+  reason: varchar("reason", { length: 100 }).notNull(),
+  details: text("details"),
+  status: mysqlEnum("status", ["pending", "reviewing", "resolved", "dismissed"])
+    .default("pending")
+    .notNull(),
+  handledBy: int("handledBy"),
+  handledAt: timestamp("handledAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Report = typeof reports.$inferSelect;
+export type InsertReport = typeof reports.$inferInsert;
+
+export const adminAuditLogs = mysqlTable("adminAuditLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  adminUserId: int("adminUserId").notNull(),
+  action: varchar("action", { length: 100 }).notNull(),
+  targetType: varchar("targetType", { length: 50 }).notNull(),
+  targetId: varchar("targetId", { length: 64 }),
+  metadata: text("metadata"),
+  ipAddress: varchar("ipAddress", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;
+export type InsertAdminAuditLog = typeof adminAuditLogs.$inferInsert;
 
 /**
  * 관계 정의
