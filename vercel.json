@@ -1,13 +1,31 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "vite",
+  "version": 2,
   "installCommand": "pnpm install --no-frozen-lockfile",
-  "buildCommand": "VITE_USE_API=false pnpm build",
-  "outputDirectory": "dist/public",
-  "rewrites": [
+  "builds": [
     {
-      "source": "/((?!api/).*)",
-      "destination": "/index.html"
+      "src": "api/trpc.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist/public"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/trpc(.*)",
+      "dest": "/api/trpc.ts"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
